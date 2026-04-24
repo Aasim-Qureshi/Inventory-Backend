@@ -14,6 +14,7 @@ app.use(
     origin: [
       "http://localhost:5173",
       "https://inventory-frontend-sepia.vercel.app",
+      "https://inventory-frontend-sepia.vercel.app/",
     ],
   }),
 );
