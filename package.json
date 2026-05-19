@@ -8,9 +8,11 @@
     "build": "echo \"No build step required\""
   },
   "dependencies": {
+    "bcryptjs": "^3.0.3",
     "cors": "^2.8.6",
     "dotenv": "^17.4.2",
     "express": "^5.2.1",
+    "express-session": "^1.19.0",
     "mongoose": "^9.5.0",
     "uuid": "^13.0.0"
   }

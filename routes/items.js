@@ -2,8 +2,8 @@ const express = require("express");
 const router = express.Router();
 const Item = require("../models/Item");
 const Entry = require("../models/Entry");
+const { requireAuth } = require("../middleware/auth");
 
-// Helper: compute running balances sorted by date
 function computeBalances(entries) {
   const sorted = [...entries].sort((a, b) => a.date.localeCompare(b.date));
   let bal = 0;
@@ -32,7 +32,7 @@ async function getItemSummary(item) {
   };
 }
 
-// GET all items (with summaries)
+// GET — open to all
 router.get("/", async (req, res) => {
   try {
     const { search } = req.query;
@@ -45,8 +45,8 @@ router.get("/", async (req, res) => {
   }
 });
 
-// POST new item
-router.post("/", async (req, res) => {
+// POST — auth required
+router.post("/", requireAuth, async (req, res) => {
   try {
     const { name, unit } = req.body;
     if (!name || !name.trim())
@@ -61,8 +61,8 @@ router.post("/", async (req, res) => {
   }
 });
 
-// DELETE item and its entries
-router.delete("/:id", async (req, res) => {
+// DELETE — auth required
+router.delete("/:id", requireAuth, async (req, res) => {
   try {
     const item = await Item.findByIdAndDelete(req.params.id);
     if (!item) return res.status(404).json({ error: "Item not found" });
@@ -73,7 +73,6 @@ router.delete("/:id", async (req, res) => {
   }
 });
 
-// GET entries for one item
 router.get("/:id/entries", async (req, res) => {
   try {
     const item = await Item.findById(req.params.id);
@@ -85,12 +84,11 @@ router.get("/:id/entries", async (req, res) => {
   }
 });
 
-// POST new entry for an item
-router.post("/:id/entries", async (req, res) => {
+// POST entry — auth required
+router.post("/:id/entries", requireAuth, async (req, res) => {
   try {
     const item = await Item.findById(req.params.id);
     if (!item) return res.status(404).json({ error: "Item not found" });
-
     const { date, type, quantity, remarks } = req.body;
     if (!date || !type || !quantity)
       return res
@@ -98,21 +96,20 @@ router.post("/:id/entries", async (req, res) => {
         .json({ error: "date, type, and quantity are required" });
     if (!["received", "issued"].includes(type))
       return res.status(400).json({ error: "type must be received or issued" });
-
     const qty = parseFloat(quantity);
     if (isNaN(qty) || qty <= 0)
       return res
         .status(400)
         .json({ error: "quantity must be a positive number" });
-
     if (type === "issued") {
       const summary = await getItemSummary(item);
       if (summary.balance < qty)
-        return res.status(400).json({
-          error: `Insufficient balance. Current: ${summary.balance} ${item.unit}`,
-        });
+        return res
+          .status(400)
+          .json({
+            error: `Insufficient balance. Current: ${summary.balance} ${item.unit}`,
+          });
     }
-
     const entry = await Entry.create({
       itemId: item._id,
       date,
